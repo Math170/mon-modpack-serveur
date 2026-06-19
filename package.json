@@ -6,7 +6,7 @@
   "author": "Mathéo",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
+    "build": "electron-builder --win --publish always",
     "release": "npm version patch && npm run build && git push && git push --tags"
   },
   "build": {
@@ -32,10 +32,7 @@
       {
         "provider": "github",
         "owner": "Math170",
-        "repo": "mon-modpack-serveur",
-        "releaseType": "release",
-        "draft": false,
-        "prerelease": false
+        "repo": "mon-modpack-serveur"
       }
     ]
   },
