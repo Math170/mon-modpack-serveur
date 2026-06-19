@@ -1,0 +1,21 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Se déclenche dès que tu pousses un tag qui commence par 'v'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and Publish
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} # Très important
+        run: npm run build -- --publish always

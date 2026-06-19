@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Solisyum launcher</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            /* Ajout du fond d'écran avec un voile assombrissant pour la lisibilité */
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('fond.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; /* Empêche l'apparition de barres de défilement avec la neige */
+        }
+        .particle {
+            position: absolute;
+            top: -10%;
+            pointer-events: none; /* Les clics passent à travers */
+        }
+        @keyframes fall {
+            0% { transform: translateY(0vh) translateX(0); opacity: 0.8; }
+            100% { transform: translateY(120vh) translateX(30px); opacity: 0; }
+        }
+        @keyframes fall-rotate {
+            0% { transform: translateY(0vh) translateX(0) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(120vh) translateX(50px) rotate(360deg); opacity: 0; }
+        }
+        @keyframes rise {
+            0% { transform: translateY(0vh) translateX(0); opacity: 1; }
+            100% { transform: translateY(-120vh) translateX(-20px); opacity: 0; }
+        }
+        .action-btn { 
+            padding: 15px 20px; 
+            font-size: 20px; 
+            font-weight: bold;
+            cursor: pointer; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            transition: 0.2s;
+            flex: 1;
+        }
+        .action-btn:hover { 
+            filter: brightness(0.9);
+            transform: scale(1.05);
+        }
+        #status {
+            margin-top: 20px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Conteneur pour les particules -->
+    <div id="particles-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;"></div>
+
+    <!-- Musique de fond (n'oublie pas de mettre un fichier musique.mp3 dans ton dossier) -->
+    <audio id="musique-fond" src="musique.mp3" loop autoplay></audio>
+
+    <div id="zone-compte" style="display: none; position: absolute; top: 20px; right: 20px; text-align: center;">
+        <img id="skin-tete" src="" title="Gérer le compte" style="width: 64px; height: 64px; cursor: pointer; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.2s;" onclick="toggleMenu()">
+        
+        <!-- Lien vers Discord -->
+        <img src="https://img.icons8.com/color/48/000000/discord-logo.png" title="Rejoindre notre Discord" style="width: 40px; margin-top: 10px; cursor: pointer; transition: transform 0.2s; display: block; margin-left: auto; margin-right: auto;" onclick="window.electronAPI.openUrl('https://discord.gg/Ka9YcZeXcB')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+
+        <div id="menu-compte" style="display: none; background: #333; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #555;">
+            <div id="nom-joueur" style="margin-bottom: 10px; font-weight: bold; color: var(--primary-color);"></div>
+            <button onclick="ouvrirReglages()" style="background-color: #2196F3; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px;">Réglages</button>
+            <button id="btn-deconnexion" onclick="deconnecter()" style="background-color: #f44336; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold;">Changer de compte</button>
+        </div>
+    </div>
+    <h1>Solisyum</h1>
+    
+    <!-- Message de bienvenue -->
+    <h2 id="welcome-message" style="display: none; color: var(--primary-color); margin-top: -10px; margin-bottom: 20px;">Bienvenue, <span id="welcome-name"></span> !</h2>
+
+    <!-- Affichage du nombre de joueurs -->
+    <div id="statut-serveur" style="margin-bottom: 20px; background: rgba(0, 0, 0, 0.5); padding: 10px 20px; border-radius: 8px; border: 1px solid var(--primary-color);">
+        🌍 Joueurs en ligne : <span id="nb-joueurs" style="font-weight: bold; color: var(--primary-color);">Chargement...</span>
+    </div>
+
+    <!-- Nouveautés / Patch notes -->
+    <div id="news-container" style="margin-bottom: 20px; background: rgba(0, 0, 0, 0.6); padding: 15px; border-radius: 8px; border: 1px solid #2196F3; max-width: 500px; text-align: center;">
+        <h3 style="margin-top: 0; color: #2196F3; margin-bottom: 10px;">Dernières Nouveautés</h3>
+        <div id="news-text" style="color: #ddd; font-size: 14px; line-height: 1.5;">Chargement des nouveautés...</div>
+    </div>
+
+    <!-- Modal des réglages -->
+    <div id="modal-reglages" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center;">
+        <div style="background: #222; padding: 20px; border-radius: 8px; width: 320px; border: 1px solid #555;">
+            <h2 style="margin-top: 0; color: var(--primary-color);">Réglages</h2>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">Couleur du launcher :</label>
+                <input type="color" id="color-picker" value="#4CAF50" style="width: 100%; height: 40px; cursor: pointer; border: none; padding: 0; border-radius: 5px; background: none;" oninput="changerCouleur(this.value)">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">Image de fond :</label>
+                <div style="display: flex; gap: 10px;">
+                    <select id="bg-select" style="flex: 1; padding: 8px; border-radius: 5px; background-color: #333; color: white; border: 1px solid #555;" onchange="changerBackground(this.value)">
+                        <option value="fond.jpg">Classique</option>
+                        <option value="fond2.jpg">Paysage 1</option>
+                        <option value="fond3.jpg">Paysage 2</option>
+                    </select>
+                    <label style="background-color: var(--primary-color); color: white; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; text-align: center; font-size: 14px; display: flex; align-items: center;">
+                        Importer...
+                        <input type="file" accept="image/png, image/jpeg, image/webp" style="display: none;" onchange="importerBackground(this)">
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">Mémoire (RAM) :</label>
+                <select id="ram-select" style="width: 100%; padding: 8px; border-radius: 5px; background-color: #333; color: white; border: 1px solid #555;">
+                    <option value="2G">2 Go</option>
+                    <option value="4G" selected>4 Go</option>
+                    <option value="6G">6 Go</option>
+                    <option value="8G">8 Go</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">Volume de la musique : <span id="volume-val">100%</span></label>
+                <input type="range" id="volume-slider" min="0" max="100" value="100" style="width: 100%; cursor: pointer;" oninput="changerVolume(this.value)">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="fullscreen-check" style="margin-right: 10px;">
+                    Démarrer en plein écran
+                </label>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="color: #ccc; display: block; margin-bottom: 5px;">Effets visuels :</label>
+                <select id="particles-select" style="width: 100%; padding: 8px; border-radius: 5px; background-color: #333; color: white; border: 1px solid #555;" onchange="changeParticles(this.value)">
+                    <option value="none">Aucun</option>
+                    <option value="snow">Neige</option>
+                    <option value="rain">Pluie</option>
+                    <option value="leaves">Feuilles d'automne</option>
+                    <option value="sparks">Étincelles</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #ccc; display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="close-launcher-check" checked style="margin-right: 10px;">
+                    Fermer le launcher après lancement
+                </label>
+            </div>
+
+            <button onclick="reparerJeu()" style="width: 100%; padding: 10px; background-color: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">Réparer le jeu</button>
+            <button onclick="fermerReglages()" style="width: 100%; padding: 10px; background-color: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Sauvegarder et Fermer</button>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 15px; width: 100%; max-width: 500px; margin-top: 10px;">
+        <button id="play-btn" class="action-btn" style="background-color: #555;">JOUER (Solo)</button>
+        <button id="join-btn" class="action-btn" style="background-color: var(--primary-color);">REJOINDRE LE SERVEUR</button>
+    </div>
+    <div id="status">En attente...</div>
+    <div id="progress-container" style="display: none; width: 300px; background-color: #333; border-radius: 8px; margin-top: 15px; overflow: hidden;">
+        <div id="progress-bar" style="width: 0%; height: 20px; background-color: var(--primary-color); transition: width 0.2s;"></div>
+    </div>
+    <div id="progress-text" style="margin-top: 5px; font-size: 14px; color: #aaa; text-align: center;"></div>
+
+    <!-- NOUVEAU : Affichage de la version -->
+    <div id="app-version" style="position: absolute; bottom: 10px; right: 15px; color: rgba(255, 255, 255, 0.4); font-size: 14px; font-weight: bold;">v...</div>
+
+    <script>
+        const playBtn = document.getElementById('play-btn');
+        const joinBtn = document.getElementById('join-btn');
+        const statusDiv = document.getElementById('status');
+
+        function startLaunch(autoConnect) {
+            playBtn.disabled = true;
+            joinBtn.disabled = true;
+            
+            if (autoConnect) {
+                joinBtn.innerText = "LANCEMENT...";
+                joinBtn.style.backgroundColor = "#ff9800";
+            } else {
+                playBtn.innerText = "LANCEMENT...";
+                playBtn.style.backgroundColor = "#ff9800";
+            }
+
+            statusDiv.innerText = "Vérification des fichiers en cours...";
+            
+            const selectedRam = document.getElementById('ram-select').value;
+            const isFullscreen = document.getElementById('fullscreen-check').checked;
+            const isCloseLauncher = document.getElementById('close-launcher-check').checked;
+            
+            // Sauvegarde des préférences du joueur dans le navigateur
+            localStorage.setItem('settings-ram', selectedRam);
+            localStorage.setItem('settings-fullscreen', isFullscreen);
+            localStorage.setItem('settings-close', isCloseLauncher);
+
+            // On envoie un objet contenant tous les paramètres à main.js
+            window.electronAPI.launchGame({
+                ram: selectedRam,
+                fullscreen: isFullscreen,
+                closeLauncher: isCloseLauncher,
+                autoConnect: autoConnect
+            });
+        }
+
+        playBtn.addEventListener('click', () => startLaunch(false));
+        joinBtn.addEventListener('click', () => startLaunch(true));
+
+        // Réception de la progression et mise à jour de l'UI
+        window.electronAPI.onProgress((data) => {
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-bar').style.width = data.pourcentage + '%';
+            document.getElementById('progress-text').innerHTML = data.etape;
+            document.getElementById('status').innerText = "Téléchargement en cours...";
+
+        // On coupe la musique quand le jeu est lancé (pourcentage à 100%)
+        if (data.pourcentage === 100) {
+            document.getElementById('musique-fond').pause();
+        }
+        });
+
+        // Réinitialisation du bouton de lancement lors de la fermeture du jeu
+        window.electronAPI.onGameClosed(() => {
+            playBtn.innerText = "JOUER (Solo)";
+            playBtn.style.backgroundColor = "#555";
+            playBtn.disabled = false;
+
+            joinBtn.innerText = "REJOINDRE LE SERVEUR";
+            joinBtn.style.backgroundColor = "var(--primary-color)";
+            joinBtn.disabled = false;
+            statusDiv.innerText = "Prêt à jouer";
+            document.getElementById('progress-container').style.display = 'none';
+            
+            // Relancer la musique de fond
+            document.getElementById('musique-fond').play().catch(e => console.log("Lecture auto bloquée"));
+        });
+
+        // Affichage de la version du launcher
+        window.electronAPI.getVersion().then(v => document.getElementById('app-version').innerText = 'v' + v);
+
+        // Demande à vérifier si on est déjà connecté au lancement
+        window.electronAPI.checkLogin();
+
+        // Chargement automatique des paramètres précédemment sauvegardés
+        if (localStorage.getItem('settings-ram')) document.getElementById('ram-select').value = localStorage.getItem('settings-ram');
+        if (localStorage.getItem('settings-fullscreen') !== null) document.getElementById('fullscreen-check').checked = localStorage.getItem('settings-fullscreen') === 'true';
+        if (localStorage.getItem('settings-close') !== null) document.getElementById('close-launcher-check').checked = localStorage.getItem('settings-close') === 'true';
+        if (localStorage.getItem('settings-volume') !== null) {
+            const savedVolume = localStorage.getItem('settings-volume');
+            document.getElementById('volume-slider').value = savedVolume;
+            document.getElementById('volume-val').innerText = savedVolume + '%';
+            document.getElementById('musique-fond').volume = savedVolume / 100;
+        }
+        if (localStorage.getItem('settings-color')) {
+            const savedColor = localStorage.getItem('settings-color');
+            document.getElementById('color-picker').value = savedColor;
+            document.documentElement.style.setProperty('--primary-color', savedColor);
+        }
+        if (localStorage.getItem('settings-bg')) {
+            const savedBg = localStorage.getItem('settings-bg');
+            if (savedBg.startsWith('data:image')) {
+                let customOption = document.createElement('option');
+                customOption.id = 'bg-custom-option';
+                customOption.text = 'Personnalisée';
+                customOption.value = savedBg;
+                document.getElementById('bg-select').appendChild(customOption);
+            }
+            document.getElementById('bg-select').value = savedBg;
+            changerBackground(savedBg);
+        }
+        if (localStorage.getItem('settings-particles-type')) {
+            const savedType = localStorage.getItem('settings-particles-type');
+            document.getElementById('particles-select').value = savedType;
+            changeParticles(savedType);
+        } else {
+            document.getElementById('particles-select').value = 'snow';
+            changeParticles('snow'); // Neige par défaut au premier lancement
+        }
+
+        // Affichage de la tête et du nom du joueur
+        window.electronAPI.onPlayerInfo((data) => {
+            document.getElementById('skin-tete').src = `https://mc-heads.net/avatar/${data.uuid}.png`;
+            document.getElementById('nom-joueur').innerText = data.nom;
+            document.getElementById('zone-compte').style.display = 'block';
+            
+            // Affichage du message de bienvenue avec le pseudo
+            document.getElementById('welcome-name').innerText = data.nom;
+            document.getElementById('welcome-message').style.display = 'block';
+        });
+
+        function toggleMenu() {
+            const menu = document.getElementById('menu-compte');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function ouvrirReglages() {
+            document.getElementById('modal-reglages').style.display = 'flex';
+            toggleMenu(); // Cache le sous-menu de la tête
+        }
+
+        function fermerReglages() {
+            const selectedRam = document.getElementById('ram-select').value;
+            const isFullscreen = document.getElementById('fullscreen-check').checked;
+            const isCloseLauncher = document.getElementById('close-launcher-check').checked;
+            const selectedColor = document.getElementById('color-picker').value;
+            const selectedBg = document.getElementById('bg-select').value;
+            const particlesType = document.getElementById('particles-select').value;
+            
+            localStorage.setItem('settings-ram', selectedRam);
+            localStorage.setItem('settings-fullscreen', isFullscreen);
+            localStorage.setItem('settings-close', isCloseLauncher);
+            localStorage.setItem('settings-color', selectedColor);
+            localStorage.setItem('settings-bg', selectedBg);
+            localStorage.setItem('settings-particles-type', particlesType);
+
+            document.getElementById('modal-reglages').style.display = 'none';
+        }
+
+        function reparerJeu() {
+            if (!confirm("Voulez-vous vraiment réparer le jeu ? Cela va nettoyer et retélécharger tous les fichiers (Jeu, Java, Mods).")) {
+                return;
+            }
+
+            // On sauvegarde les réglages actuels
+            const selectedRam = document.getElementById('ram-select').value;
+            const isFullscreen = document.getElementById('fullscreen-check').checked;
+            const isCloseLauncher = document.getElementById('close-launcher-check').checked;
+            const selectedColor = document.getElementById('color-picker').value;
+            const selectedBg = document.getElementById('bg-select').value;
+            const particlesType = document.getElementById('particles-select').value;
+            
+            localStorage.setItem('settings-ram', selectedRam);
+            localStorage.setItem('settings-fullscreen', isFullscreen);
+            localStorage.setItem('settings-close', isCloseLauncher);
+            localStorage.setItem('settings-color', selectedColor);
+            localStorage.setItem('settings-bg', selectedBg);
+            localStorage.setItem('settings-particles-type', particlesType);
+
+            document.getElementById('modal-reglages').style.display = 'none';
+
+            playBtn.innerText = "RÉPARATION...";
+            playBtn.style.backgroundColor = "#ff9800";
+            playBtn.disabled = true;
+            joinBtn.innerText = "RÉPARATION...";
+            joinBtn.style.backgroundColor = "#ff9800";
+            joinBtn.disabled = true;
+            statusDiv.innerText = "Nettoyage des fichiers en cours...";
+
+            window.electronAPI.launchGame({
+                ram: selectedRam,
+                fullscreen: isFullscreen,
+                closeLauncher: isCloseLauncher,
+                repair: true // On active le mode réparation
+            });
+        }
+
+        function changerCouleur(valeur) {
+            document.documentElement.style.setProperty('--primary-color', valeur);
+            localStorage.setItem('settings-color', valeur); // Sauvegarde automatique en direct
+        }
+
+        function changerBackground(valeur) {
+            document.body.style.background = `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('${valeur}') no-repeat center center fixed`;
+            document.body.style.backgroundSize = 'cover';
+            localStorage.setItem('settings-bg', valeur); // Sauvegarde instantanée
+        }
+
+        function importerBackground(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Limite de taille à 4 Mo pour ne pas surcharger la mémoire locale du launcher
+                if (file.size > 4 * 1024 * 1024) {
+                    alert("Cette image est trop lourde (limite: 4 Mo). Veuillez choisir une image plus légère.");
+                    input.value = ""; // Réinitialise le choix
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result; // L'image convertie en texte
+                    
+                    let customOption = document.getElementById('bg-custom-option');
+                    if (!customOption) {
+                        customOption = document.createElement('option');
+                        customOption.id = 'bg-custom-option';
+                        customOption.text = 'Personnalisée';
+                        document.getElementById('bg-select').appendChild(customOption);
+                    }
+                    customOption.value = base64Image;
+                    document.getElementById('bg-select').value = base64Image;
+
+                    changerBackground(base64Image); // Change l'image et sauvegarde
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function changeParticles(type) {
+            const container = document.getElementById('particles-container');
+            container.innerHTML = ''; // Nettoyer les particules existantes
+            localStorage.setItem('settings-particles-type', type);
+            
+            if (type === 'none') return;
+
+            let count = type === 'rain' ? 100 : 50;
+            
+            for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + 'vw';
+
+                if (type === 'snow') {
+                    particle.style.animation = `fall ${Math.random() * 3 + 3}s linear infinite ${Math.random() * 5}s`;
+                    const size = Math.random() * 5 + 3;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.backgroundColor = 'white';
+                    particle.style.borderRadius = '50%';
+                    particle.style.boxShadow = '0 0 5px white';
+                } else if (type === 'rain') {
+                    particle.style.animation = `fall ${Math.random() * 0.5 + 0.5}s linear infinite ${Math.random() * 2}s`;
+                    particle.style.width = '2px';
+                    particle.style.height = (Math.random() * 10 + 10) + 'px';
+                    particle.style.backgroundColor = '#87CEFA';
+                    particle.style.opacity = '0.6';
+                } else if (type === 'leaves') {
+                    particle.style.animation = `fall-rotate ${Math.random() * 4 + 4}s linear infinite ${Math.random() * 5}s`;
+                    const size = Math.random() * 8 + 6;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.backgroundColor = Math.random() > 0.5 ? '#d45d00' : '#ffb300';
+                    particle.style.borderRadius = '50% 0 50% 0';
+                } else if (type === 'sparks') {
+                    particle.style.top = 'auto';
+                    particle.style.bottom = '-10%';
+                    particle.style.animation = `rise ${Math.random() * 2 + 2}s linear infinite ${Math.random() * 3}s`;
+                    const size = Math.random() * 4 + 2;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.backgroundColor = '#ffcc00';
+                    particle.style.borderRadius = '50%';
+                    particle.style.boxShadow = '0 0 8px #ff9900';
+                }
+                    container.appendChild(particle);
+                }
+            }
+
+        function changerVolume(valeur) {
+            document.getElementById('volume-val').innerText = valeur + '%';
+            document.getElementById('musique-fond').volume = valeur / 100;
+            localStorage.setItem('settings-volume', valeur); // Sauvegarde automatique
+        }
+
+        function deconnecter() {
+            window.electronAPI.disconnect();
+            window.location.reload();
+        }
+
+    // Récupération de l'état du serveur (Statut & Joueurs)
+    async function fetchServerStatus() {
+        const serverIp = "90.22.22.119"; // Adresse IP du serveur
+        try {
+            const response = await fetch(`https://api.mcsrvstat.us/2/${serverIp}`);
+            const data = await response.json();
+            
+            if (data.online) {
+                document.getElementById('nb-joueurs').innerText = `${data.players.online} / ${data.players.max}`;
+            } else {
+                document.getElementById('nb-joueurs').innerText = "Hors ligne";
+                document.getElementById('nb-joueurs').style.color = "#f44336";
+            }
+        } catch (error) {
+            console.error("Erreur avec l'API mcsrvstat :", error);
+            document.getElementById('nb-joueurs').innerText = "Erreur réseau";
+        }
+    }
+
+    fetchServerStatus(); // Appel au démarrage
+    setInterval(fetchServerStatus, 10000); // Actualisation automatique toutes les 10 secondes
+
+    // Récupération des Patch Notes distants
+    async function fetchNews() {
+        try {
+            const response = await fetch("https://raw.githubusercontent.com/Math170/mon-modpack-serveur/main/config.json");
+            const data = await response.json();
+            if (data.news) {
+                document.getElementById('news-text').innerHTML = data.news;
+            } else {
+                document.getElementById('news-text').innerText = "Bienvenue sur Solisyum !";
+            }
+        } catch (error) {
+            document.getElementById('news-text').innerText = "Impossible de récupérer les nouveautés.";
+        }
+    }
+    fetchNews(); // Appel au démarrage
+    </script>
+</body>
+</html>
