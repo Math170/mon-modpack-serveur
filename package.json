@@ -32,7 +32,10 @@
       {
         "provider": "github",
         "owner": "Math170",
-        "repo": "mon-modpack-serveur"
+        "repo": "mon-modpack-serveur",
+        "releaseType": "release",
+        "draft": false,
+        "prerelease": false
       }
     ]
   },
