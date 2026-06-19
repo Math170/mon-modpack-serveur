@@ -12,6 +12,9 @@
   "build": {
     "appId": "com.monlauncher.app",
     "productName": "Mon Launcher",
+    "directories": {
+      "output": "build_output"
+    },
     "artifactName": "SolisyumLauncher-Setup-${version}.${ext}",
     "compression": "maximum",
     "asarUnpack": [
