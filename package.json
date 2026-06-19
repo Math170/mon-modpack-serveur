@@ -6,7 +6,7 @@
   "author": "Mathéo",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --publish always",
+    "build": "rimraf dist && electron-builder --win --publish always",
     "release": "npm version patch && npm run build && git push && git push --tags"
   },
   "build": {
@@ -38,13 +38,14 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
-    "minecraft-launcher-core": "^3.18.2",
-    "msmc": "^5.0.5",
+    "discord-rpc": "^4.0.1",
     "electron-updater": "^6.1.8",
-    "discord-rpc": "^4.0.1"
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5"
   },
   "devDependencies": {
     "electron": "^42.4.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "rimraf": "^6.1.3"
   }
 }
