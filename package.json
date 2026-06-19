@@ -6,7 +6,7 @@
   "author": "Mathéo",
   "scripts": {
     "start": "electron .",
-    "build": "taskkill /F /IM electron.exe /T 2>nul & taskkill /F /IM \"Mon Launcher.exe\" 2>nul & rimraf dist && electron-builder --win --publish always",
+    "build": "rimraf build_output && electron-builder --win --publish always",
     "release": "npm version patch && npm run build && git push && git push --tags"
   },
   "build": {
